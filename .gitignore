@@ -1,0 +1,32 @@
+# Vivado generated files
+*.jou
+*.log
+*.str
+*.bit
+*.bin
+*.mcs
+
+.cache/
+.hw/
+.ip_user_files/
+.runs/
+.sim/
+.srcs/
+.gen/
+.Xil/
+
+# Questa / ModelSim
+work/
+transcript
+vsim.wlf
+*.wlf
+*.vcd
+
+# Python
+__pycache__/
+*.pyc
+.venv/
+
+# OS
+.DS_Store
+Thumbs.db
