@@ -30,7 +30,7 @@ doc/      Development notes
 
 ## Development Milestones
 
-- [ ] UART TX simulation
+- [x] UART TX simulation
 - [ ] UART RX simulation
 - [ ] UART Echo simulation
 - [ ] UART Echo board test
