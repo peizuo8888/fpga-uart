@@ -58,7 +58,8 @@ always @(posedge clk or negedge rst_n) begin
     if (!rst_n) begin
         baud_cnt <= {BAUD_CNT_W{1'b0}};
     end else begin
-        baud_cnt <= baud_cnt_next;
+        if (cr_state == IDLE || cr_state == DONE) baud_cnt <= {BAUD_CNT_W{1'b0}};            
+        else baud_cnt <= baud_cnt_next;            
     end
 end
 always @(posedge clk or negedge rst_n) begin
