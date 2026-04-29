@@ -17,6 +17,7 @@ Current target:
 - UART Level: 3.3V TTL
 - Baud Rate: 115200
 - Format: 8N1
+- System Clock: 125 MHz
 
 ## Project Structure
 
@@ -31,6 +32,7 @@ doc/      Development notes
 ## Development Milestones
 
 - [x] UART TX simulation
+- [x] UART TX board test
 - [ ] UART RX simulation
 - [ ] UART Echo simulation
 - [ ] UART Echo board test
@@ -40,7 +42,7 @@ doc/      Development notes
 
 ```text
 Start bit : 1 bit, logic 0
-Data bits : 8 bits
+Data bits : 8 bits, LSB first
 Parity    : None
 Stop bit  : 1 bit, logic 1
 Baud rate : 115200
@@ -72,9 +74,17 @@ PC receives A.
 
 ## Current Status
 
-Project structure created.
+UART TX completed.
+
+Done:
+
+- Implemented UART TX module
+- Wrote UART TX testbench
+- Passed UART TX simulation
+- Verified UART TX on FPGA board
+- PC successfully received ASCII `A`
 
 Next step:
 
-- Implement UART TX module
-- Write UART TX testbench
+- Implement UART RX module
+- Write UART RX testbench
