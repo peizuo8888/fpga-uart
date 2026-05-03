@@ -128,8 +128,8 @@ PC image
 
 ## Image Transfer Milestones
 
-- [ ] Python image to RAW conversion
-- [ ] Python RAW to image conversion
+- [x] Python image to RAW conversion
+- [x] Python RAW to image conversion
 - [ ] UART packet protocol
 - [ ] RX FIFO
 - [ ] Packet RX FSM

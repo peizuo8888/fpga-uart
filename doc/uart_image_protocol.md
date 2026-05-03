@@ -4,14 +4,14 @@
 
 This document defines the UART packet protocol used for FPGA image transfer.
 
-The first target is to transfer a 128x128 8-bit grayscale RAW image from PC to FPGA.
+The current target is to transfer a 128x128 RGB888 RAW image from PC to FPGA.
 
 The FPGA stores the image data into BRAM and sends the image data back to PC for verification.
 
 The verification target is:
 
 ```text
-input.raw == output.raw
+input_rgb888.raw == output_rgb888.raw
 ```
 
 ---
@@ -36,37 +36,74 @@ Each UART byte uses 10 bits on the wire:
 
 ## 3. Image Format
 
-The first version uses grayscale RAW image data.
+The current version uses RGB888 RAW image data.
 
 ```text
-Width  : 128
-Height : 128
-Format : 8-bit grayscale RAW
-Size   : 16384 bytes
+Width    : 128
+Height   : 128
+Format   : RGB888 RAW
+Channels : 3
+Size     : 49152 bytes
 ```
 
-RAW data layout:
+Calculation:
 
 ```text
-bram[0]     = pixel[0][0]
-bram[1]     = pixel[0][1]
-bram[2]     = pixel[0][2]
-...
-bram[127]   = pixel[0][127]
-bram[128]   = pixel[1][0]
-...
-bram[16383] = pixel[127][127]
+128 x 128 x 3 = 49152 bytes
 ```
 
-One pixel is one byte.
+One pixel uses three bytes:
 
 ```text
-1 pixel = 8 bits = 1 byte
+1 pixel = R + G + B = 3 bytes
 ```
 
 ---
 
-## 4. Packet Format
+## 4. RGB888 RAW Data Layout
+
+RGB888 byte order:
+
+```text
+Byte 0 : pixel[0][0].R
+Byte 1 : pixel[0][0].G
+Byte 2 : pixel[0][0].B
+
+Byte 3 : pixel[0][1].R
+Byte 4 : pixel[0][1].G
+Byte 5 : pixel[0][1].B
+```
+
+BRAM data layout:
+
+```text
+bram[0] = pixel[0].R
+bram[1] = pixel[0].G
+bram[2] = pixel[0].B
+
+bram[3] = pixel[1].R
+bram[4] = pixel[1].G
+bram[5] = pixel[1].B
+
+...
+bram[49149] = last_pixel.R
+bram[49150] = last_pixel.G
+bram[49151] = last_pixel.B
+```
+
+Pixel index calculation:
+
+```text
+pixel_index = bram_addr / 3
+
+R = bram[pixel_index * 3 + 0]
+G = bram[pixel_index * 3 + 1]
+B = bram[pixel_index * 3 + 2]
+```
+
+---
+
+## 5. Packet Format
 
 All UART image transfer data uses packet format.
 
@@ -84,7 +121,7 @@ Last byte   : CHECKSUM
 
 ---
 
-## 5. Field Description
+## 6. Field Description
 
 ### Header
 
@@ -144,7 +181,7 @@ The header bytes are not included in checksum.
 
 ---
 
-## 6. Command List
+## 7. Command List
 
 ```text
 0x01 : START_IMAGE
@@ -158,7 +195,7 @@ The header bytes are not included in checksum.
 
 ---
 
-## 7. START_IMAGE Packet
+## 8. START_IMAGE Packet
 
 ### Direction
 
@@ -194,33 +231,34 @@ Byte 8 : TOTAL_LEN_3
 
 ```text
 0x01 : 8-bit grayscale RAW
+0x02 : RGB888 RAW
 ```
 
-### Example for 128x128 Grayscale RAW
+### Example for 128x128 RGB888 RAW
 
 ```text
 WIDTH     = 128
 HEIGHT    = 128
-FORMAT    = 0x01
-TOTAL_LEN = 16384
+FORMAT    = 0x02
+TOTAL_LEN = 49152
 ```
 
 Payload:
 
 ```text
-80 00 80 00 01 00 40 00 00
+80 00 80 00 02 00 C0 00 00
 ```
 
 Because:
 
 ```text
 128   = 0x0080
-16384 = 0x00004000
+49152 = 0x0000C000
 ```
 
 ---
 
-## 8. IMAGE_DATA Packet
+## 9. IMAGE_DATA Packet
 
 ### Direction
 
@@ -240,7 +278,7 @@ CMD = 0x02
 
 ### Payload Size
 
-The first version uses:
+The current version uses:
 
 ```text
 PAYLOAD_SIZE = 128 bytes
@@ -248,12 +286,12 @@ PAYLOAD_SIZE = 128 bytes
 
 ### Total Packet Count
 
-For a 128x128 grayscale image:
+For a 128x128 RGB888 image:
 
 ```text
-Image size    = 16384 bytes
+Image size    = 49152 bytes
 Payload size  = 128 bytes
-Packet count  = 128 packets
+Packet count  = 384 packets
 ```
 
 ### BRAM Write Address
@@ -283,9 +321,19 @@ payload[1]   → bram[129]
 payload[127] → bram[255]
 ```
 
+Last packet:
+
+```text
+SEQ = 383
+payload[0]   → bram[49024]
+payload[1]   → bram[49025]
+...
+payload[127] → bram[49151]
+```
+
 ---
 
-## 9. END_IMAGE Packet
+## 10. END_IMAGE Packet
 
 ### Direction
 
@@ -310,11 +358,26 @@ No payload
 LEN = 0
 ```
 
+The sequence number should be the next value after the last IMAGE_DATA packet.
+
+For current image:
+
+```text
+Last IMAGE_DATA seq = 383
+END_IMAGE seq       = 384
+```
+
 After receiving END_IMAGE, FPGA should check whether the expected number of bytes has been received.
+
+Expected received byte count:
+
+```text
+49152 bytes
+```
 
 ---
 
-## 10. READBACK_REQUEST Packet
+## 11. READBACK_REQUEST Packet
 
 ### Direction
 
@@ -343,7 +406,7 @@ After receiving READBACK_REQUEST, FPGA reads image data from BRAM and sends IMAG
 
 ---
 
-## 11. IMAGE_DATA_BACK Packet
+## 12. IMAGE_DATA_BACK Packet
 
 ### Direction
 
@@ -375,12 +438,12 @@ The sequence number follows the same rule as IMAGE_DATA.
 SEQ = 0   → image bytes 0 to 127
 SEQ = 1   → image bytes 128 to 255
 ...
-SEQ = 127 → image bytes 16256 to 16383
+SEQ = 383 → image bytes 49024 to 49151
 ```
 
 ---
 
-## 12. ACK Packet
+## 13. ACK Packet
 
 ### Direction
 
@@ -418,7 +481,7 @@ AA 55 80 SEQ_L SEQ_H 01 00 00 CHECKSUM
 
 ---
 
-## 13. NACK Packet
+## 14. NACK Packet
 
 ### Direction
 
@@ -450,6 +513,7 @@ Byte 0 : ERROR_CODE
 0x03 : Sequence error
 0x04 : Unsupported command
 0x05 : Image size error
+0x06 : Unsupported image format
 ```
 
 Example:
@@ -460,7 +524,7 @@ AA 55 81 SEQ_L SEQ_H 01 00 ERROR_CODE CHECKSUM
 
 ---
 
-## 14. Transfer Flow
+## 15. Transfer Flow
 
 ### Image Send Flow
 
@@ -478,7 +542,7 @@ FPGA replies ACK
 
 ...
 
-PC sends IMAGE_DATA seq=127
+PC sends IMAGE_DATA seq=383
 FPGA writes payload to BRAM
 FPGA replies ACK
 
@@ -502,18 +566,18 @@ PC receives payload
 
 ...
 
-FPGA sends IMAGE_DATA_BACK seq=127
+FPGA sends IMAGE_DATA_BACK seq=383
 PC receives payload
 
-PC writes output.raw
-PC verifies input.raw == output.raw
+PC writes output_rgb888.raw
+PC verifies input_rgb888.raw == output_rgb888.raw
 ```
 
 ---
 
-## 15. Checksum Example
+## 16. Checksum Example
 
-For a packet body:
+For an IMAGE_DATA packet body:
 
 ```text
 CMD     = 0x02
@@ -534,7 +598,7 @@ The packet header `0xAA 0x55` is not included.
 
 ---
 
-## 16. FPGA Module Responsibility
+## 17. FPGA Module Responsibility
 
 ```text
 uart_rx.v
@@ -551,7 +615,7 @@ image_bram_ctrl.v
     Read image data from BRAM during readback
 
 bram_1p.v
-    Store image data
+    Store RGB888 image data
 
 packet_tx_fsm.v
     Send ACK, NACK, and IMAGE_DATA_BACK packets
@@ -562,36 +626,38 @@ uart_tx.v
 
 ---
 
-## 17. First Version Limitation
+## 18. First Version Limitation
 
-The first version only supports:
+The current version only supports:
 
 ```text
 Image size : 128x128
-Format     : 8-bit grayscale RAW
+Format     : RGB888 RAW
 Baud rate  : 115200
 Payload    : 128 bytes per packet
 ```
 
-The first version does not support:
+The current version does not support:
 
 ```text
 PNG decoding
-JPG decoding
-RGB image
+JPG decoding inside FPGA
+Grayscale image transfer
 Variable image size
 Compression
 Real-time video
 ```
 
+JPG to RGB888 RAW conversion is handled by Python on the PC side.
+
 ---
 
-## 18. Verification Rule
+## 19. Verification Rule
 
 The transfer is considered successful only when:
 
 ```text
-input.raw == output.raw
+input_rgb888.raw == output_rgb888.raw
 ```
 
 Python verification result should be:
