@@ -33,10 +33,10 @@ doc/      Development notes
 
 - [x] UART TX simulation
 - [x] UART TX board test
-- [ ] UART RX simulation
-- [ ] UART Echo simulation
-- [ ] UART Echo board test
-- [ ] Python echo test
+- [x] UART RX simulation
+- [x] UART Echo simulation
+- [x] UART Echo board test
+- [x] Python echo test
 
 ## UART Format
 
